@@ -70,10 +70,10 @@ func TestMatchNilKey(t *testing.T) {
 	assert.Nil(t, trie.Match(key))
 }
 
-func TestInsertNilNode(t *testing.T) {
+func TestInsertNilKey(t *testing.T) {
 	var trie *TrieNode
 
-	newTrie, err := trie.Insert(nil)
+	newTrie, err := trie.Insert(nil, nil)
 	assert.NotNil(t, err)
 	assert.Equal(t, trie, newTrie)
 	assert.Equal(t, 0, trie.Size())
@@ -87,44 +87,13 @@ func TestMatchNilTrie(t *testing.T) {
 	assert.Nil(t, trie.Match(key))
 }
 
-func TestInsertNodeWithChildren(t *testing.T) {
-	var trie *TrieNode
-
-	key := TrieKey{
-		0,
-		[]byte{},
-	}
-	newTrie, err := trie.Insert(&TrieNode{
-		TrieKey:  key,
-		children: [2]*TrieNode{&TrieNode{}, nil},
-	})
-	assert.NotNil(t, err)
-	assert.Equal(t, trie, newTrie)
-	assert.Equal(t, 0, trie.Size())
-	assert.Equal(t, 0, trie.height())
-
-	newTrie, err = trie.Insert(&TrieNode{
-		TrieKey:  key,
-		children: [2]*TrieNode{nil, &TrieNode{}},
-	})
-	assert.NotNil(t, err)
-	assert.Equal(t, trie, newTrie)
-	assert.Equal(t, 0, trie.Size())
-	assert.Equal(t, 0, trie.height())
-
-	trie, err = trie.Insert(&TrieNode{TrieKey: key})
-	assert.Nil(t, err)
-	assert.Equal(t, 1, trie.Size())
-	assert.Equal(t, 1, trie.height())
-}
-
 func TestMatchZeroLength(t *testing.T) {
 	var trie *TrieNode
 
-	trie, err := trie.Insert(&TrieNode{TrieKey: TrieKey{
+	trie, err := trie.Insert(&TrieKey{
 		0,
 		[]byte{},
-	}})
+	}, nil)
 	assert.Nil(t, err)
 	assert.True(t, trie.active())
 	assert.Equal(t, 1, trie.Size())
@@ -139,10 +108,10 @@ func TestMatchZeroLength(t *testing.T) {
 func TestNoMatchTooBroad(t *testing.T) {
 	var trie *TrieNode
 
-	trie, err := trie.Insert(&TrieNode{TrieKey: TrieKey{
+	trie, err := trie.Insert(&TrieKey{
 		24,
 		[]byte{10, 0, 0, 0},
-	}})
+	}, nil)
 	assert.Nil(t, err)
 	assert.True(t, trie.active())
 	assert.Equal(t, 1, trie.Size())
@@ -210,10 +179,10 @@ func TestNoMatchPrefixMisMatch(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			var trie *TrieNode
 
-			trie, err := trie.Insert(&TrieNode{TrieKey: TrieKey{
+			trie, err := trie.Insert(&TrieKey{
 				tt.nodeLength,
 				tt.nodePrefix,
-			}})
+			}, nil)
 			assert.Nil(t, err)
 			assert.True(t, trie.active())
 			assert.Equal(t, 1, trie.Size())
@@ -273,15 +242,12 @@ func TestMatchSimplePrefixMatch(t *testing.T) {
 				tt.nodeLength,
 				tt.nodePrefix,
 			}
-			node := &TrieNode{TrieKey: *key}
-			trie, err := trie.Insert(node)
+			trie, err := trie.Insert(key, nil)
 			assert.Nil(t, err)
 			assert.Equal(t, 1, trie.Size())
 			assert.Equal(t, 1, trie.height())
-			assert.True(t, node.active())
 
 			assert := assert.New(t)
-			assert.Equal(trie, node)
 			assert.Equal(trie, trie.Match(key))
 		})
 	}
@@ -330,18 +296,17 @@ func TestMatchPartialByteMatches(t *testing.T) {
 		t.Run(fmt.Sprintf("%d", tt.nodeLength), func(t *testing.T) {
 			var trie *TrieNode
 
-			node := &TrieNode{TrieKey: TrieKey{
+			key := &TrieKey{
 				tt.nodeLength,
 				tt.nodePrefix,
-			}}
-			trie, err := trie.Insert(node)
+			}
+			trie, err := trie.Insert(key, nil)
 			assert.Nil(t, err)
-			assert.True(t, node.active())
+			assert.True(t, trie.active())
 			assert.Equal(t, 1, trie.Size())
 			assert.Equal(t, 1, trie.height())
 
 			assert := assert.New(t)
-			assert.Equal(trie, node)
 			assert.Equal(trie, trie.Match(&TrieKey{
 				tt.nodeLength,
 				// Always use 0xff to ensure that extraneous bits in the data are ignored
@@ -389,53 +354,48 @@ func TestInsertOverlapping(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			// This test inserts the three given nodes in the order given and
-			// checks that they are both found in the resulting trie
-			subTest := func(first, second, third *TrieNode) func(t *testing.T) {
+			// checks that they are found in the resulting trie
+			subTest := func(first, second, third *TrieKey) func(t *testing.T) {
 				return func(t *testing.T) {
 					var trie *TrieNode
 
-					trie, err := trie.Insert(first)
+					trie, err := trie.Insert(first, nil)
 					assert.Nil(t, err)
-					assert.True(t, first.active())
-					assert.Equal(t, trie, first)
-					assert.Equal(t, first, trie.Match(&first.TrieKey))
+					assert.NotNil(t, trie.Match(first))
 					assert.Equal(t, 1, trie.Size())
 					assert.Equal(t, 1, trie.height())
 
-					trie, err = trie.Insert(second)
+					trie, err = trie.Insert(second, nil)
 					assert.Nil(t, err)
-					assert.True(t, second.active())
-					assert.Equal(t, second, trie.Match(&second.TrieKey))
+					assert.NotNil(t, trie.Match(second))
 					assert.Equal(t, 2, trie.Size())
 					assert.Equal(t, 2, trie.height())
 
-					trie, err = trie.Insert(third)
+					trie, err = trie.Insert(third, nil)
 					assert.Nil(t, err)
-					assert.True(t, third.active())
-					assert.Equal(t, third, trie.Match(&third.TrieKey))
+					assert.NotNil(t, trie.Match(third))
 					assert.Equal(t, 3, trie.Size())
 					assert.Equal(t, 3, trie.height())
 				}
 			}
-			t.Run("forward", subTest(&TrieNode{TrieKey: tt.a}, &TrieNode{TrieKey: tt.b}, &TrieNode{TrieKey: tt.c}))
-			t.Run("backward", subTest(&TrieNode{TrieKey: tt.c}, &TrieNode{TrieKey: tt.b}, &TrieNode{TrieKey: tt.a}))
+			t.Run("forward", subTest(&tt.a, &tt.b, &tt.c))
+			t.Run("backward", subTest(&tt.c, &tt.b, &tt.a))
 
 			// This sub-test tests that a node cannot be inserted twice
 			insertDuplicate := func(key TrieKey) func(t *testing.T) {
 				return func(t *testing.T) {
 					var trie *TrieNode
 
-					trie, err := trie.Insert(&TrieNode{TrieKey: key})
+					trie, err := trie.Insert(&key, nil)
 					assert.Nil(t, err)
 					assert.True(t, trie.active())
 					assert.NotNil(t, trie)
 					assert.Equal(t, 1, trie.Size())
 					assert.Equal(t, 1, trie.height())
 
-					dup := &TrieNode{TrieKey: key}
-					newTrie, err := trie.Insert(dup)
+					dup := key
+					newTrie, err := trie.Insert(&dup, nil)
 					assert.NotNil(t, err)
-					assert.False(t, dup.active())
 					assert.Equal(t, trie, newTrie)
 					assert.Equal(t, 1, trie.Size())
 					assert.Equal(t, 1, trie.height())
@@ -474,23 +434,21 @@ func TestInsertDisjoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			subTest := func(first, second *TrieNode) func(t *testing.T) {
+			subTest := func(first, second *TrieKey) func(t *testing.T) {
 				// This test inserts the two given nodes in the order given and
 				// checks that they are both found in the resulting trie
 				return func(t *testing.T) {
 					var trie *TrieNode
 
-					trie, err := trie.Insert(first)
+					trie, err := trie.Insert(first, nil)
 					assert.Nil(t, err)
-					assert.True(t, first.active())
-					assert.Equal(t, trie, first)
+					assert.Equal(t, &trie.TrieKey, first)
 					assert.Equal(t, 1, trie.Size())
 					assert.Equal(t, 1, trie.height())
 
-					trie, err = trie.Insert(second)
+					trie, err = trie.Insert(second, nil)
 					assert.Nil(t, err)
-					assert.True(t, second.active())
-					assert.Equal(t, second, trie.Match(&second.TrieKey))
+					assert.NotNil(t, trie.Match(second))
 					assert.Equal(t, 2, trie.Size())
 					assert.Equal(t, 2, trie.height())
 
@@ -502,17 +460,15 @@ func TestInsertDisjoint(t *testing.T) {
 					assert.Equal(t, trie.TrieKey, tt.super)
 
 					// insert an active node the same as `super` to turn it active
-					super := &TrieNode{TrieKey: tt.super}
-					trie, err = trie.Insert(super)
+					trie, err = trie.Insert(&tt.super, nil)
 					assert.Nil(t, err)
-					assert.True(t, super.active())
 					assert.NotNil(t, trie.Match(&tt.super))
 					assert.Equal(t, 3, trie.Size())
 					assert.Equal(t, 2, trie.height())
 				}
 			}
-			t.Run("forward", subTest(&TrieNode{TrieKey: tt.a}, &TrieNode{TrieKey: tt.b}))
-			t.Run("backward", subTest(&TrieNode{TrieKey: tt.b}, &TrieNode{TrieKey: tt.a}))
+			t.Run("forward", subTest(&tt.a, &tt.b))
+			t.Run("backward", subTest(&tt.b, &tt.a))
 		})
 	}
 }
@@ -547,11 +503,9 @@ func TestInsertMoreComplex(t *testing.T) {
 
 				for _, key := range tt.keys {
 					var err error
-					node := &TrieNode{TrieKey: key}
-					trie, err = trie.Insert(node)
+					trie, err = trie.Insert(&key, nil)
 					assert.Nil(t, err)
-					assert.True(t, node.active())
-					assert.Equal(t, node, trie.Match(&key))
+					assert.NotNil(t, trie.Match(&key))
 				}
 			})
 			t.Run("backward", func(t *testing.T) {
@@ -561,11 +515,9 @@ func TestInsertMoreComplex(t *testing.T) {
 					var err error
 					key := tt.keys[i-1]
 
-					node := &TrieNode{TrieKey: key}
-					trie, err = trie.Insert(node)
+					trie, err = trie.Insert(&key, nil)
 					assert.Nil(t, err)
-					assert.True(t, node.active())
-					assert.Equal(t, node, trie.Match(&key))
+					assert.NotNil(t, trie.Match(&key))
 				}
 			})
 		})
@@ -840,7 +792,7 @@ func TestDeleteNilKey(t *testing.T) {
 		0,
 		[]byte{},
 	}
-	trie, err := trie.Insert(&TrieNode{TrieKey: key})
+	trie, err := trie.Insert(&key, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, trie.Size())
 
@@ -855,7 +807,7 @@ func TestDeleteSimple(t *testing.T) {
 		24,
 		[]byte{172, 16, 200, 0},
 	}
-	trie, err := trie.Insert(&TrieNode{TrieKey: key})
+	trie, err := trie.Insert(&key, nil)
 	trie, err = trie.Delete(&key)
 	assert.Nil(t, err)
 	assert.Nil(t, trie)
@@ -868,12 +820,12 @@ func TestDeleteLeftChild(t *testing.T) {
 		24,
 		[]byte{172, 16, 200, 0},
 	}
-	trie, err := trie.Insert(&TrieNode{TrieKey: key})
+	trie, err := trie.Insert(&key, nil)
 	childKey := TrieKey{
 		25,
 		[]byte{172, 16, 200, 0},
 	}
-	trie, err = trie.Insert(&TrieNode{TrieKey: childKey})
+	trie, err = trie.Insert(&childKey, nil)
 	trie, err = trie.Delete(&key)
 	assert.Nil(t, err)
 	assert.NotNil(t, trie)
@@ -889,18 +841,18 @@ func TestDeleteRightChild(t *testing.T) {
 		24,
 		[]byte{172, 16, 200, 0},
 	}
-	trie, err := trie.Insert(&TrieNode{TrieKey: key})
-	childKey := TrieKey{
+	trie, err := trie.Insert(&key, nil)
+	childKey := &TrieKey{
 		25,
 		[]byte{172, 16, 200, 128},
 	}
-	trie, err = trie.Insert(&TrieNode{TrieKey: childKey})
+	trie, err = trie.Insert(childKey, nil)
 	trie, err = trie.Delete(&key)
 	assert.Nil(t, err)
 	assert.NotNil(t, trie)
 
 	assert.Nil(t, trie.Match(&key))
-	assert.NotNil(t, trie.Match(&childKey))
+	assert.NotNil(t, trie.Match(childKey))
 }
 
 func TestDeleteBothChildren(t *testing.T) {
@@ -910,24 +862,24 @@ func TestDeleteBothChildren(t *testing.T) {
 		24,
 		[]byte{172, 16, 200, 0},
 	}
-	trie, err := trie.Insert(&TrieNode{TrieKey: key})
-	leftChild := TrieKey{
+	trie, err := trie.Insert(&key, nil)
+	leftChild := &TrieKey{
 		25,
 		[]byte{172, 16, 200, 0},
 	}
-	trie, err = trie.Insert(&TrieNode{TrieKey: leftChild})
-	rightChild := TrieKey{
+	trie, err = trie.Insert(leftChild, nil)
+	rightChild := &TrieKey{
 		25,
 		[]byte{172, 16, 200, 128},
 	}
-	trie, err = trie.Insert(&TrieNode{TrieKey: rightChild})
+	trie, err = trie.Insert(rightChild, nil)
 	trie, err = trie.Delete(&key)
 	assert.Nil(t, err)
 	assert.NotNil(t, trie)
 
 	assert.Nil(t, trie.Match(&key))
-	assert.NotNil(t, trie.Match(&leftChild))
-	assert.NotNil(t, trie.Match(&rightChild))
+	assert.NotNil(t, trie.Match(leftChild))
+	assert.NotNil(t, trie.Match(rightChild))
 }
 
 func TestDeleteRecursiveNil(t *testing.T) {
@@ -937,7 +889,7 @@ func TestDeleteRecursiveNil(t *testing.T) {
 		24,
 		[]byte{172, 16, 200, 0},
 	}
-	trie, err := trie.Insert(&TrieNode{TrieKey: key})
+	trie, err := trie.Insert(&key, nil)
 	childKey := TrieKey{
 		25,
 		[]byte{172, 16, 200, 0},
@@ -960,19 +912,19 @@ func TestDeleteRecursiveLeftChild(t *testing.T) {
 		24,
 		[]byte{172, 16, 200, 0},
 	}
-	trie, err := trie.Insert(&TrieNode{TrieKey: key})
-	childKey := TrieKey{
+	trie, err := trie.Insert(&key, nil)
+	childKey := &TrieKey{
 		25,
 		[]byte{172, 16, 200, 0},
 	}
-	trie, err = trie.Insert(&TrieNode{TrieKey: childKey})
-	trie, err = trie.Delete(&childKey)
+	trie, err = trie.Insert(childKey, nil)
+	trie, err = trie.Delete(childKey)
 	assert.Nil(t, err)
 	assert.NotNil(t, trie)
 
 	assert.NotNil(t, trie.Match(&key))
-	match := trie.Match(&childKey)
-	assert.NotEqual(t, childKey, match.TrieKey)
+	match := trie.Match(childKey)
+	assert.NotEqual(t, *childKey, match.TrieKey)
 }
 
 func TestDeleteKeyTooBroad(t *testing.T) {
@@ -982,7 +934,7 @@ func TestDeleteKeyTooBroad(t *testing.T) {
 		25,
 		[]byte{172, 16, 200, 0},
 	}
-	trie, err := trie.Insert(&TrieNode{TrieKey: key})
+	trie, err := trie.Insert(&key, nil)
 
 	broadKey := TrieKey{
 		24,
@@ -1003,7 +955,7 @@ func TestDeleteKeyDisjoint(t *testing.T) {
 		25,
 		[]byte{172, 16, 200, 0},
 	}
-	trie, err := trie.Insert(&TrieNode{TrieKey: key})
+	trie, err := trie.Insert(&key, nil)
 
 	disjointKey := TrieKey{
 		25,
@@ -1041,7 +993,7 @@ func TestSuccessivelyBetter(t *testing.T) {
 	// are returneda for the rest.
 	for index, key := range keys {
 		var err error
-		trie, err = trie.Insert(&TrieNode{TrieKey: key})
+		trie, err = trie.Insert(&key, nil)
 		assert.Nil(t, err)
 		assert.Equal(t, index+1, trie.Size())
 		assert.Equal(t, index+1, trie.height())
@@ -1116,7 +1068,7 @@ func TestIterate(t *testing.T) {
 
 	var trie *TrieNode
 	for _, key := range keys {
-		trie, _ = trie.Insert(&TrieNode{TrieKey: key})
+		trie, _ = trie.Insert(&key, nil)
 	}
 
 	result := []TrieKey{}
@@ -1215,7 +1167,7 @@ func TestAggregate(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			var trie *TrieNode
 			for _, p := range tt.pairs {
-				trie, _ = trie.Insert(&TrieNode{TrieKey: p.key, Data: p.data})
+				trie, _ = trie.Insert(&p.key, p.data)
 			}
 
 			result := []pair{}

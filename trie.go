@@ -260,8 +260,11 @@ func intMax(a, b int) int {
 }
 
 // Insert is the public form of insert(...)
-func (me *TrieNode) Insert(node *TrieNode) (newHead *TrieNode, err error) {
-	return me.insert(node, 0)
+func (me *TrieNode) Insert(key *TrieKey, data interface{}) (newHead *TrieNode, err error) {
+	if key == nil {
+		return nil, fmt.Errorf("cannot insert nil key")
+	}
+	return me.insert(&TrieNode{TrieKey: *key, Data: data}, 0)
 }
 
 // insert adds a node into the trie and return the new root of the trie. It is
@@ -280,14 +283,6 @@ func (me *TrieNode) insert(node *TrieNode, prematchedBits uint) (newHead *TrieNo
 			}
 		}
 	}()
-
-	if node == nil {
-		return me, fmt.Errorf("cannot insert nil node")
-	}
-
-	if node.children[0] != nil || node.children[1] != nil {
-		return me, fmt.Errorf("cannot insert node with children")
-	}
 
 	if me == nil {
 		return node, nil
