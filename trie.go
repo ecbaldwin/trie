@@ -74,15 +74,20 @@ func (me *Trie) Delete(key *Key) error {
 	return err
 }
 
-type Callback func(*Key, interface{})
+// Callback defines the signature of a function you can pass to Iterate or
+// Aggregate to handle each key / value pair found while iterating. Each
+// invocation of your callback should return true if iteration should continue
+// (as long as another key / value pair exists) or false to stop iterating and
+// return immediately (meaning your callback will not be called again).
+type Callback func(*Key, interface{}) bool
 
 // Iterate walks the entire trie and calls the given function for each key /
 // value pair. The order of visiting nodes is essentially lexigraphical:
 // - disjoint prefixes are visited in lexigraphical order
 // - shorter prefixes are visited immediately before longer prefixes that they contain
-func (me *Trie) Iterate(callback Callback) {
-	me.top.Iterate(func(key *internal.TrieKey, value interface{}) {
-		callback((*Key)(key), value)
+func (me *Trie) Iterate(callback Callback) bool {
+	return me.top.Iterate(func(key *internal.TrieKey, value interface{}) bool {
+		return callback((*Key)(key), value)
 	})
 }
 
@@ -104,8 +109,8 @@ func (me *Trie) Iterate(callback Callback) {
 // Prefixes are only considered aggregable if their value compare equal. This is
 // useful for aggregating prefixes where the next hop is the same but not where
 // they're different.
-func (me *Trie) Aggregate(callback Callback) {
-	me.top.Aggregate(func(key *internal.TrieKey, value interface{}) {
-		callback((*Key)(key), value)
+func (me *Trie) Aggregate(callback Callback) bool {
+	return me.top.Aggregate(func(key *internal.TrieKey, value interface{}) bool {
+		return callback((*Key)(key), value)
 	})
 }

@@ -478,22 +478,30 @@ func (me *TrieNode) aggregable(data dataContainer) (bool, dataContainer) {
 	return false, dataContainer{}
 }
 
-type Callback func(*TrieKey, interface{})
+// Callback should return true to indicate that iteration should continue or
+// false to stop it immediately.
+type Callback func(*TrieKey, interface{}) bool
 
 // Iterate walks the entire tree and calls the given function for each active
 // node. The order of visiting nodes is essentially lexigraphical:
 // - disjoint prefixes are visited in lexigraphical order
 // - shorter prefixes are visited immediately before longer prefixes that they contain
-func (me *TrieNode) Iterate(callback Callback) {
+func (me *TrieNode) Iterate(callback Callback) bool {
 	if me == nil {
-		return
+		return true
 	}
 
 	if me.isActive && callback != nil {
-		callback(&me.TrieKey, me.Data)
+		if !callback(&me.TrieKey, me.Data) {
+			return false
+		}
 	}
-	me.children[0].Iterate(callback)
-	me.children[1].Iterate(callback)
+	for _, child := range me.children {
+		if !child.Iterate(callback) {
+			return false
+		}
+	}
+	return true
 }
 
 // aggregate is the recursive implementation for Aggregate
@@ -502,25 +510,32 @@ func (me *TrieNode) Iterate(callback Callback) {
 //             this value then its key is not aggregable with containing
 //             prefixes.
 // `callback`: function to call with each key/data pair found.
-func (me *TrieNode) aggregate(data dataContainer, callback Callback) {
+func (me *TrieNode) aggregate(data dataContainer, callback Callback) bool {
 	if me == nil {
-		return
+		return true
 	}
-
-	left, right := me.children[0], me.children[1]
 
 	aggregable, d := me.aggregable(data)
 	if aggregable && !dataEqual(data, d) {
 		if callback != nil {
-			callback(&me.TrieKey, d.data)
+			if !callback(&me.TrieKey, d.data) {
+				return false
+			}
 		}
-		left.aggregate(d, callback)
-		right.aggregate(d, callback)
+		for _, child := range me.children {
+			if !child.aggregate(d, callback) {
+				return false
+			}
+		}
 	} else {
 		// Don't visit the current node but descend to children
-		left.aggregate(data, callback)
-		right.aggregate(data, callback)
+		for _, child := range me.children {
+			if !child.aggregate(data, callback) {
+				return false
+			}
+		}
 	}
+	return true
 }
 
 // Aggregate is like iterate except that it has the capability of aggregating
@@ -541,6 +556,6 @@ func (me *TrieNode) aggregate(data dataContainer, callback Callback) {
 // Prefixes are only considered aggregable if their data compare equal. This is
 // useful for aggregating prefixes where the next hop is the same but not where
 // they're different.
-func (me *TrieNode) Aggregate(callback Callback) {
-	me.aggregate(dataContainer{}, callback)
+func (me *TrieNode) Aggregate(callback Callback) bool {
+	return me.aggregate(dataContainer{}, callback)
 }

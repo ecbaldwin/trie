@@ -96,10 +96,11 @@ func TestIterate(t *testing.T) {
 	trie.Insert(insertKey, true)
 
 	found := false
-	trie.Iterate(func(key *Key, value interface{}) {
+	trie.Iterate(func(key *Key, value interface{}) bool {
 		assert.Equal(t, insertKey, key)
 		assert.True(t, value.(bool))
 		found = true
+		return true
 	})
 	assert.True(t, found)
 }
@@ -114,10 +115,11 @@ func TestAggregate(t *testing.T) {
 	trie.Insert(secondKey, true)
 
 	found := false
-	trie.Aggregate(func(key *Key, value interface{}) {
+	trie.Aggregate(func(key *Key, value interface{}) bool {
 		assert.Equal(t, insertKey, key)
 		assert.True(t, value.(bool))
 		found = true
+		return true
 	})
 	assert.True(t, found)
 }

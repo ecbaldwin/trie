@@ -1073,10 +1073,18 @@ func TestIterate(t *testing.T) {
 	}
 
 	result := []TrieKey{}
-	trie.Iterate(func(key *TrieKey, _ interface{}) {
+	trie.Iterate(func(key *TrieKey, _ interface{}) bool {
 		result = append(result, *key)
+		return true
 	})
 	assert.Equal(t, golden, result)
+
+	iterations := 0
+	trie.Iterate(func(key *TrieKey, _ interface{}) bool {
+		iterations++
+		return false
+	})
+	assert.Equal(t, 1, iterations)
 
 	// Just ensure that iterating with a nil callback doesn't crash
 	trie.Iterate(nil)
@@ -1111,6 +1119,11 @@ func TestAggregate(t *testing.T) {
 		pairs  []pair
 		golden []pair
 	}{
+		{
+			desc:   "nothing",
+			pairs:  []pair{},
+			golden: []pair{},
+		},
 		{
 			desc: "simple aggregation",
 			pairs: []pair{
@@ -1171,13 +1184,26 @@ func TestAggregate(t *testing.T) {
 				trie, _ = trie.Insert(&p.key, p.data)
 			}
 
+			expectedIterations := 0
 			result := []pair{}
 			trie.Aggregate(
-				func(key *TrieKey, data interface{}) {
+				func(key *TrieKey, data interface{}) bool {
 					result = append(result, pair{key: *key, data: data})
+					expectedIterations = 1
+					return true
 				},
 			)
 			assert.Equal(t, tt.golden, result)
+
+			iterations := 0
+			trie.Aggregate(
+				func(key *TrieKey, data interface{}) bool {
+					result = append(result, pair{key: *key, data: data})
+					iterations++
+					return false
+				},
+			)
+			assert.Equal(t, expectedIterations, iterations)
 		})
 	}
 }
@@ -1226,8 +1252,9 @@ func TestAggregateEqualComparable(t *testing.T) {
 
 			result := []pair{}
 			trie.Aggregate(
-				func(key *TrieKey, data interface{}) {
+				func(key *TrieKey, data interface{}) bool {
 					result = append(result, pair{key: *key, data: data})
+					return true
 				},
 			)
 			assert.Equal(t, tt.golden, result)
