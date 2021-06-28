@@ -20,7 +20,7 @@ type TrieNode struct {
 	// Some thought was put into alignment here. The following three fields fit
 	// within an 8-byte required alignment on x86_64 at least
 	size     uint32
-	height   uint16
+	h        uint16
 	active   bool
 	children [2]*TrieNode
 }
@@ -244,12 +244,12 @@ func (me *TrieNode) Size() int {
 	return int(me.size)
 }
 
-// Height returns the maximum height of the trie.
-func (me *TrieNode) Height() int {
+// height returns the maximum height of the trie.
+func (me *TrieNode) height() int {
 	if me == nil {
 		return 0
 	}
-	return int(me.height)
+	return int(me.h)
 }
 
 func intMax(a, b int) int {
@@ -271,10 +271,10 @@ func (me *TrieNode) insert(node *TrieNode, prematchedBits uint) (newHead *TrieNo
 	defer func() {
 		if err == nil && newHead != nil {
 			node.size = 1
-			node.height = 1
+			node.h = 1
 			node.active = true
 			newHead.size = uint32(newHead.children[0].Size() + newHead.children[1].Size())
-			newHead.height = 1 + uint16(uint16(intMax(newHead.children[0].Height(), newHead.children[1].Height())))
+			newHead.h = 1 + uint16(uint16(intMax(newHead.children[0].height(), newHead.children[1].height())))
 			if newHead.active {
 				newHead.size++
 			}
@@ -358,7 +358,7 @@ func (me *TrieNode) del(key *TrieKey, prematchedBits uint) (newHead *TrieNode, e
 	defer func() {
 		if err == nil && newHead != nil {
 			newHead.size = uint32(newHead.children[0].Size() + newHead.children[1].Size())
-			newHead.height = 1 + uint16(uint16(intMax(newHead.children[0].Height(), newHead.children[1].Height())))
+			newHead.h = 1 + uint16(uint16(intMax(newHead.children[0].height(), newHead.children[1].height())))
 			if newHead.active {
 				newHead.size++
 			}
