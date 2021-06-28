@@ -20,8 +20,8 @@ type TrieNode struct {
 	// Some thought was put into alignment here. The following three fields fit
 	// within an 8-byte required alignment on x86_64 at least
 	size     uint32
-	height   uint16
-	active   bool
+	h        uint16
+	isActive bool
 	children [2]*TrieNode
 }
 
@@ -229,7 +229,7 @@ func (me *TrieNode) match(searchKey *TrieKey, prematchedBits uint) *TrieNode {
 		}
 	}
 
-	if !me.active {
+	if !me.isActive {
 		return nil
 	}
 
@@ -244,12 +244,12 @@ func (me *TrieNode) Size() int {
 	return int(me.size)
 }
 
-// Height returns the maximum height of the trie.
-func (me *TrieNode) Height() int {
+// height returns the maximum height of the trie.
+func (me *TrieNode) height() int {
 	if me == nil {
 		return 0
 	}
-	return int(me.height)
+	return int(me.h)
 }
 
 func intMax(a, b int) int {
@@ -260,8 +260,11 @@ func intMax(a, b int) int {
 }
 
 // Insert is the public form of insert(...)
-func (me *TrieNode) Insert(node *TrieNode) (newHead *TrieNode, err error) {
-	return me.insert(node, 0)
+func (me *TrieNode) Insert(key *TrieKey, data interface{}) (newHead *TrieNode, err error) {
+	if key == nil {
+		return nil, fmt.Errorf("cannot insert nil key")
+	}
+	return me.insert(&TrieNode{TrieKey: *key, Data: data}, 0)
 }
 
 // insert adds a node into the trie and return the new root of the trie. It is
@@ -271,23 +274,15 @@ func (me *TrieNode) insert(node *TrieNode, prematchedBits uint) (newHead *TrieNo
 	defer func() {
 		if err == nil && newHead != nil {
 			node.size = 1
-			node.height = 1
-			node.active = true
+			node.h = 1
+			node.isActive = true
 			newHead.size = uint32(newHead.children[0].Size() + newHead.children[1].Size())
-			newHead.height = 1 + uint16(uint16(intMax(newHead.children[0].Height(), newHead.children[1].Height())))
-			if newHead.active {
+			newHead.h = 1 + uint16(uint16(intMax(newHead.children[0].height(), newHead.children[1].height())))
+			if newHead.isActive {
 				newHead.size++
 			}
 		}
 	}()
-
-	if node == nil {
-		return me, fmt.Errorf("cannot insert nil node")
-	}
-
-	if node.children[0] != nil || node.children[1] != nil {
-		return me, fmt.Errorf("cannot insert node with children")
-	}
 
 	if me == nil {
 		return node, nil
@@ -298,7 +293,7 @@ func (me *TrieNode) insert(node *TrieNode, prematchedBits uint) (newHead *TrieNo
 	switch {
 	case trie_contains && node_contains:
 		// They have the same key
-		if me.active {
+		if me.isActive {
 			return me, fmt.Errorf("a node with that key already exists")
 		}
 		node.children = me.children
@@ -358,8 +353,8 @@ func (me *TrieNode) del(key *TrieKey, prematchedBits uint) (newHead *TrieNode, e
 	defer func() {
 		if err == nil && newHead != nil {
 			newHead.size = uint32(newHead.children[0].Size() + newHead.children[1].Size())
-			newHead.height = 1 + uint16(uint16(intMax(newHead.children[0].Height(), newHead.children[1].Height())))
-			if newHead.active {
+			newHead.h = 1 + uint16(uint16(intMax(newHead.children[0].height(), newHead.children[1].height())))
+			if newHead.isActive {
 				newHead.size++
 			}
 		}
@@ -388,7 +383,7 @@ func (me *TrieNode) del(key *TrieKey, prematchedBits uint) (newHead *TrieNode, e
 	}
 
 	// The key matches this node exactly, delete this node
-	me.active = false
+	me.isActive = false
 
 	if me.children[0] != nil {
 		if me.children[1] != nil {
@@ -403,13 +398,13 @@ func (me *TrieNode) del(key *TrieKey, prematchedBits uint) (newHead *TrieNode, e
 	return me.children[1], nil
 }
 
-// Active returns whether a node represents an active prefix in the tree (true)
+// active returns whether a node represents an active prefix in the tree (true)
 // or an intermediate node (false). It is safe to call on a nil pointer.
-func (me *TrieNode) Active() bool {
+func (me *TrieNode) active() bool {
 	if me == nil {
 		return false
 	}
-	return me.active
+	return me.isActive
 }
 
 type dataContainer struct {
@@ -425,7 +420,7 @@ func dataEqual(a, b dataContainer) bool {
 }
 
 // aggregable returns if descendants can be aggregated into the current prefix,
-// it considers the `active` attributes of all nodes under consideration and
+// it considers the `isActive` attributes of all nodes under consideration and
 // only aggregates where active nodes can be joined together in aggregation. It
 // also only aggregates nodes whose data compares equal.
 //
@@ -434,7 +429,7 @@ func dataEqual(a, b dataContainer) bool {
 func (me *TrieNode) aggregable(data dataContainer) (bool, dataContainer) {
 	// Note that me != nil by design
 
-	if me.active {
+	if me.isActive {
 		return true, dataContainer{valid: true, data: me.Data}
 	}
 
@@ -454,7 +449,7 @@ func (me *TrieNode) aggregable(data dataContainer) (bool, dataContainer) {
 	// joint direct ancestor and whether they should be aggrated into the
 	// ancestor as discussed above.
 
-	// NOTE that we know that BOTH children exist since me.active is false. If
+	// NOTE that we know that BOTH children exist since me.isActive is false. If
 	// less than one child existed, the tree would have been compacted to
 	// eliminate this node (me).
 	left, right := me.children[0], me.children[1]
@@ -480,7 +475,7 @@ func (me *TrieNode) Iterate(callback Callback) {
 		return
 	}
 
-	if me.active && callback != nil {
+	if me.isActive && callback != nil {
 		callback(&me.TrieKey, me.Data)
 	}
 	me.children[0].Iterate(callback)
