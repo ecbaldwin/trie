@@ -412,11 +412,25 @@ type dataContainer struct {
 	data  interface{}
 }
 
+// EqualComparable is an interface used to compare data. If the datatype you
+// store implements it, it can be used to aggregate prefixes.
+type EqualComparable interface {
+	EqualInterface(interface{}) bool
+}
+
 func dataEqual(a, b dataContainer) bool {
 	if !(a.valid && b.valid) {
 		return false
 	}
-	return a.data == b.data
+	// If the data stored are EqualComparable, compare it using its method.
+	// This is useful to allow mapping to a more complex type (e.g.
+	// netaddr.IPSet)  that is not comparable by normal means.
+	switch t := a.data.(type) {
+	case EqualComparable:
+		return t.EqualInterface(b.data)
+	default:
+		return a.data == b.data
+	}
 }
 
 // aggregable returns if descendants can be aggregated into the current prefix,

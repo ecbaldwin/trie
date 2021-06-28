@@ -3,6 +3,7 @@ package trie
 import (
 	"fmt"
 	"math/rand"
+	"reflect"
 	"testing"
 	"unsafe"
 
@@ -1159,6 +1160,59 @@ func TestAggregate(t *testing.T) {
 				pair{key: TrieKey{30, []byte{10, 224, 24, 0}}, data: true},
 				pair{key: TrieKey{31, []byte{10, 224, 24, 0}}, data: false},
 				pair{key: TrieKey{32, []byte{10, 224, 24, 1}}, data: true},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			var trie *TrieNode
+			for _, p := range tt.pairs {
+				trie, _ = trie.Insert(&p.key, p.data)
+			}
+
+			result := []pair{}
+			trie.Aggregate(
+				func(key *TrieKey, data interface{}) {
+					result = append(result, pair{key: *key, data: data})
+				},
+			)
+			assert.Equal(t, tt.golden, result)
+		})
+	}
+}
+
+type comparable struct {
+	// Begin with a type (slice) that is not comparable with standard ==
+	data []string
+}
+
+func (me *comparable) EqualInterface(other interface{}) bool {
+	return reflect.DeepEqual(me, other)
+}
+
+// Like the TestAggregate above but using a type that is comparable through the
+// EqualComparable interface.
+func TestAggregateEqualComparable(t *testing.T) {
+	NextHop1 := &comparable{data: []string{"10.224.24.1"}}
+	NextHop2 := &comparable{data: []string{"10.224.24.111"}}
+	tests := []struct {
+		desc   string
+		pairs  []pair
+		golden []pair
+	}{
+		{
+			desc: "mixed umbrellas",
+			pairs: []pair{
+				pair{key: TrieKey{30, []byte{10, 224, 24, 0}}, data: NextHop1},
+				pair{key: TrieKey{31, []byte{10, 224, 24, 0}}, data: NextHop2},
+				pair{key: TrieKey{32, []byte{10, 224, 24, 1}}, data: NextHop1},
+				pair{key: TrieKey{32, []byte{10, 224, 24, 0}}, data: NextHop2},
+			},
+			golden: []pair{
+				pair{key: TrieKey{30, []byte{10, 224, 24, 0}}, data: NextHop1},
+				pair{key: TrieKey{31, []byte{10, 224, 24, 0}}, data: NextHop2},
+				pair{key: TrieKey{32, []byte{10, 224, 24, 1}}, data: NextHop1},
 			},
 		},
 	}
