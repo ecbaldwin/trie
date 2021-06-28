@@ -470,7 +470,6 @@ func (me *TrieNode) aggregable(data dataContainer) (bool, dataContainer) {
 	leftAggegable, leftData := left.aggregable(data)
 	rightAggegable, rightData := right.aggregable(data)
 
-	// TODO The following doesn't check nil on the children (in case you get rid of the above)
 	arePeers := (me.Length+1) == left.Length && left.Length == right.Length
 	if arePeers && leftAggegable && rightAggegable && dataEqual(leftData, rightData) {
 		return true, leftData
