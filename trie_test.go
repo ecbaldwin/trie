@@ -7,18 +7,66 @@ import (
 )
 
 func TestInsert(t *testing.T) {
-	var trie Trie
-	assert.Equal(t, 0, trie.Size())
-
 	t.Run("Nil", func(t *testing.T) {
+		var trie Trie
+		assert.Equal(t, 0, trie.Size())
+
 		err := trie.Insert(nil, true)
 		assert.NotNil(t, err)
 		assert.Equal(t, 0, trie.Size())
 	})
 	t.Run("Success", func(t *testing.T) {
+		var trie Trie
+		assert.Equal(t, 0, trie.Size())
+
 		key := &Key{24, []byte("key")}
 		err := trie.Insert(key, true)
 		assert.Nil(t, err)
+		assert.Equal(t, 1, trie.Size())
+	})
+	t.Run("Success then nil", func(t *testing.T) {
+		var trie Trie
+		assert.Equal(t, 0, trie.Size())
+		key := &Key{24, []byte("key")}
+		err := trie.Insert(key, true)
+		assert.Equal(t, 1, trie.Size())
+
+		err = trie.Insert(nil, true)
+		assert.NotNil(t, err)
+		assert.Equal(t, 1, trie.Size())
+	})
+}
+
+func TestGetOrInsert(t *testing.T) {
+	t.Run("Nil", func(t *testing.T) {
+		var trie Trie
+		assert.Equal(t, 0, trie.Size())
+
+		value, err := trie.GetOrInsert(nil, true)
+		assert.NotNil(t, err)
+		assert.Nil(t, value)
+		assert.Equal(t, 0, trie.Size())
+	})
+	t.Run("Success", func(t *testing.T) {
+		var trie Trie
+		assert.Equal(t, 0, trie.Size())
+
+		key := &Key{24, []byte("key")}
+		value, err := trie.GetOrInsert(key, true)
+		assert.Nil(t, err)
+		assert.True(t, value.(bool))
+		assert.Equal(t, 1, trie.Size())
+	})
+	t.Run("Success then nil", func(t *testing.T) {
+		var trie Trie
+		assert.Equal(t, 0, trie.Size())
+		key := &Key{24, []byte("key")}
+		err := trie.Insert(key, true)
+		assert.Equal(t, 1, trie.Size())
+
+		value, err := trie.GetOrInsert(nil, true)
+		assert.NotNil(t, err)
+		assert.Nil(t, value)
 		assert.Equal(t, 1, trie.Size())
 	})
 }

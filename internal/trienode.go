@@ -190,6 +190,61 @@ func compare(a, b *TrieKey, prematchedBits uint) (a_match, b_match, reversed boo
 	return
 }
 
+// Get is the public form of get(...)
+func (me *TrieNode) GetOrInsert(searchKey *TrieKey, data interface{}) (newHead, result *TrieNode, err error) {
+	if searchKey == nil {
+		return nil, nil, fmt.Errorf("cannot insert nil key")
+	}
+
+	newHead, result = me.getOrInsert(searchKey, data, 0)
+	return
+}
+
+func (me *TrieNode) setSize() {
+	// me is not nil by design
+	me.size = uint32(me.children[0].Size() + me.children[1].Size())
+	me.h = 1 + uint16(uint16(intMax(me.children[0].height(), me.children[1].height())))
+	if me.isActive {
+		me.size++
+	}
+}
+
+// getOrInsert returns the existing value if an exact match is found, otherwise, inserts the given default
+func (me *TrieNode) getOrInsert(searchKey *TrieKey, data interface{}, prematchedBits uint) (head, result *TrieNode) {
+	defer func() {
+		if result == nil {
+			result = &TrieNode{TrieKey: *searchKey, Data: data}
+
+			// The only error from insert is that the key already exists. But, that cannot happen by design.
+			head, _ = me.insert(result, prematchedBits)
+		}
+	}()
+
+	if me == nil || searchKey.Length < me.TrieKey.Length {
+		return
+	}
+
+	matches, exact, _, child := contains(&me.TrieKey, searchKey, prematchedBits)
+	if !matches {
+		return
+	}
+
+	if !exact {
+		head = me
+		var newChild *TrieNode
+		newChild, result = me.children[child].getOrInsert(searchKey, data, me.TrieKey.Length)
+		me.children[child] = newChild
+		me.setSize()
+		return
+	}
+
+	if !me.isActive {
+		return
+	}
+
+	return me, me
+}
+
 // Match is the public form of match(...)
 func (me *TrieNode) Match(searchKey *TrieKey) *TrieNode {
 	if searchKey == nil {
@@ -280,11 +335,7 @@ func (me *TrieNode) insert(node *TrieNode, prematchedBits uint) (newHead *TrieNo
 			node.size = 1
 			node.h = 1
 			node.isActive = true
-			newHead.size = uint32(newHead.children[0].Size() + newHead.children[1].Size())
-			newHead.h = 1 + uint16(uint16(intMax(newHead.children[0].height(), newHead.children[1].height())))
-			if newHead.isActive {
-				newHead.size++
-			}
+			newHead.setSize()
 		}
 	}()
 

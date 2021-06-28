@@ -19,8 +19,28 @@ func (me *Trie) Size() int {
 // already exists, an error is returned.
 func (me *Trie) Insert(key *Key, value interface{}) error {
 	var err error
-	me.top, err = me.top.Insert((*internal.TrieKey)(key), value)
-	return err
+	var newHead *internal.TrieNode
+	newHead, err = me.top.Insert((*internal.TrieKey)(key), value)
+	if err != nil {
+		return err
+	}
+
+	me.top = newHead
+	return nil
+}
+
+// GetOrInsert returns the value for the given key. If the key is not found,
+// then value is inserted and returned. If the new key cannot be inserted, an
+// error is returned.
+func (me *Trie) GetOrInsert(key *Key, value interface{}) (interface{}, error) {
+	var err error
+	var newHead, node *internal.TrieNode
+	newHead, node, err = me.top.GetOrInsert((*internal.TrieKey)(key), value)
+	if err != nil {
+		return nil, err
+	}
+	me.top = newHead
+	return node.Data, nil
 }
 
 // Match indicates how closely the given key matches the search result.
