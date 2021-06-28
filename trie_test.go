@@ -18,9 +18,9 @@ func minInt(a, b int) int {
 
 func TestActive(t *testing.T) {
 	var node *TrieNode
-	assert.False(t, node.Active())
-	assert.False(t, (&TrieNode{}).Active())
-	assert.True(t, (&TrieNode{active: true}).Active())
+	assert.False(t, node.active())
+	assert.False(t, (&TrieNode{}).active())
+	assert.True(t, (&TrieNode{isActive: true}).active())
 }
 
 func TestStructSizes(t *testing.T) {
@@ -126,7 +126,7 @@ func TestMatchZeroLength(t *testing.T) {
 		[]byte{},
 	}})
 	assert.Nil(t, err)
-	assert.True(t, trie.active)
+	assert.True(t, trie.active())
 	assert.Equal(t, 1, trie.Size())
 	assert.Equal(t, 1, trie.height())
 
@@ -144,7 +144,7 @@ func TestNoMatchTooBroad(t *testing.T) {
 		[]byte{10, 0, 0, 0},
 	}})
 	assert.Nil(t, err)
-	assert.True(t, trie.active)
+	assert.True(t, trie.active())
 	assert.Equal(t, 1, trie.Size())
 	assert.Equal(t, 1, trie.height())
 
@@ -215,7 +215,7 @@ func TestNoMatchPrefixMisMatch(t *testing.T) {
 				tt.nodePrefix,
 			}})
 			assert.Nil(t, err)
-			assert.True(t, trie.active)
+			assert.True(t, trie.active())
 			assert.Equal(t, 1, trie.Size())
 			assert.Equal(t, 1, trie.height())
 
@@ -278,7 +278,7 @@ func TestMatchSimplePrefixMatch(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, 1, trie.Size())
 			assert.Equal(t, 1, trie.height())
-			assert.True(t, node.active)
+			assert.True(t, node.active())
 
 			assert := assert.New(t)
 			assert.Equal(trie, node)
@@ -336,7 +336,7 @@ func TestMatchPartialByteMatches(t *testing.T) {
 			}}
 			trie, err := trie.Insert(node)
 			assert.Nil(t, err)
-			assert.True(t, node.active)
+			assert.True(t, node.active())
 			assert.Equal(t, 1, trie.Size())
 			assert.Equal(t, 1, trie.height())
 
@@ -396,7 +396,7 @@ func TestInsertOverlapping(t *testing.T) {
 
 					trie, err := trie.Insert(first)
 					assert.Nil(t, err)
-					assert.True(t, first.active)
+					assert.True(t, first.active())
 					assert.Equal(t, trie, first)
 					assert.Equal(t, first, trie.Match(&first.TrieKey))
 					assert.Equal(t, 1, trie.Size())
@@ -404,14 +404,14 @@ func TestInsertOverlapping(t *testing.T) {
 
 					trie, err = trie.Insert(second)
 					assert.Nil(t, err)
-					assert.True(t, second.active)
+					assert.True(t, second.active())
 					assert.Equal(t, second, trie.Match(&second.TrieKey))
 					assert.Equal(t, 2, trie.Size())
 					assert.Equal(t, 2, trie.height())
 
 					trie, err = trie.Insert(third)
 					assert.Nil(t, err)
-					assert.True(t, third.active)
+					assert.True(t, third.active())
 					assert.Equal(t, third, trie.Match(&third.TrieKey))
 					assert.Equal(t, 3, trie.Size())
 					assert.Equal(t, 3, trie.height())
@@ -427,7 +427,7 @@ func TestInsertOverlapping(t *testing.T) {
 
 					trie, err := trie.Insert(&TrieNode{TrieKey: key})
 					assert.Nil(t, err)
-					assert.True(t, trie.active)
+					assert.True(t, trie.active())
 					assert.NotNil(t, trie)
 					assert.Equal(t, 1, trie.Size())
 					assert.Equal(t, 1, trie.height())
@@ -435,7 +435,7 @@ func TestInsertOverlapping(t *testing.T) {
 					dup := &TrieNode{TrieKey: key}
 					newTrie, err := trie.Insert(dup)
 					assert.NotNil(t, err)
-					assert.False(t, dup.active)
+					assert.False(t, dup.active())
 					assert.Equal(t, trie, newTrie)
 					assert.Equal(t, 1, trie.Size())
 					assert.Equal(t, 1, trie.height())
@@ -482,14 +482,14 @@ func TestInsertDisjoint(t *testing.T) {
 
 					trie, err := trie.Insert(first)
 					assert.Nil(t, err)
-					assert.True(t, first.active)
+					assert.True(t, first.active())
 					assert.Equal(t, trie, first)
 					assert.Equal(t, 1, trie.Size())
 					assert.Equal(t, 1, trie.height())
 
 					trie, err = trie.Insert(second)
 					assert.Nil(t, err)
-					assert.True(t, second.active)
+					assert.True(t, second.active())
 					assert.Equal(t, second, trie.Match(&second.TrieKey))
 					assert.Equal(t, 2, trie.Size())
 					assert.Equal(t, 2, trie.height())
@@ -498,14 +498,14 @@ func TestInsertDisjoint(t *testing.T) {
 
 					// The following are testing a bit more of the internals
 					// than I normally do.
-					assert.False(t, trie.active)
+					assert.False(t, trie.active())
 					assert.Equal(t, trie.TrieKey, tt.super)
 
 					// insert an active node the same as `super` to turn it active
 					super := &TrieNode{TrieKey: tt.super}
 					trie, err = trie.Insert(super)
 					assert.Nil(t, err)
-					assert.True(t, super.active)
+					assert.True(t, super.active())
 					assert.NotNil(t, trie.Match(&tt.super))
 					assert.Equal(t, 3, trie.Size())
 					assert.Equal(t, 2, trie.height())
@@ -550,7 +550,7 @@ func TestInsertMoreComplex(t *testing.T) {
 					node := &TrieNode{TrieKey: key}
 					trie, err = trie.Insert(node)
 					assert.Nil(t, err)
-					assert.True(t, node.active)
+					assert.True(t, node.active())
 					assert.Equal(t, node, trie.Match(&key))
 				}
 			})
@@ -564,7 +564,7 @@ func TestInsertMoreComplex(t *testing.T) {
 					node := &TrieNode{TrieKey: key}
 					trie, err = trie.Insert(node)
 					assert.Nil(t, err)
-					assert.True(t, node.active)
+					assert.True(t, node.active())
 					assert.Equal(t, node, trie.Match(&key))
 				}
 			})
