@@ -192,6 +192,10 @@ func compare(a, b *TrieKey, prematchedBits uint) (a_match, b_match, reversed boo
 
 // Match is the public form of match(...)
 func (me *TrieNode) Match(searchKey *TrieKey) *TrieNode {
+	if searchKey == nil {
+		return nil
+	}
+
 	return me.match(searchKey, 0)
 }
 
@@ -209,7 +213,7 @@ func (me *TrieNode) Match(searchKey *TrieKey) *TrieNode {
 // "longest" means that if multiple existing entries in the trie match the one
 // with the longest length will be returned. It is the most specific match.
 func (me *TrieNode) match(searchKey *TrieKey, prematchedBits uint) *TrieNode {
-	if me == nil || searchKey == nil {
+	if me == nil {
 		return nil
 	}
 
