@@ -29,6 +29,20 @@ func (me *Trie) Insert(key *Key, value interface{}) error {
 	return nil
 }
 
+// Insert adds the given key / value pair. If the new key cannot be inserted or
+// already exists, an error is returned.
+func (me *Trie) InsertOrUpdate(key *Key, value interface{}) error {
+	var err error
+	var newHead *internal.TrieNode
+	newHead, err = me.top.InsertOrUpdate((*internal.TrieKey)(key), value)
+	if err != nil {
+		return err
+	}
+
+	me.top = newHead
+	return nil
+}
+
 // GetOrInsert returns the value for the given key. If the key is not found,
 // then value is inserted and returned. If the new key cannot be inserted, an
 // error is returned.

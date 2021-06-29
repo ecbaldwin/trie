@@ -81,6 +81,112 @@ func TestInsertNilKey(t *testing.T) {
 	assert.Equal(t, 0, trie.height())
 }
 
+func TestInsertOrUpdateNilKey(t *testing.T) {
+	var trie *TrieNode
+
+	newTrie, err := trie.InsertOrUpdate(nil, nil)
+	assert.NotNil(t, err)
+	assert.Equal(t, trie, newTrie)
+	assert.Equal(t, 0, trie.Size())
+	assert.Equal(t, 0, trie.height())
+}
+
+func TestInsertOrUpdateChangeValue(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{}
+
+	trie, err := trie.InsertOrUpdate(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	trie, err = trie.InsertOrUpdate(key, false)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.False(t, trie.Match(key).Data.(bool))
+}
+
+func TestInsertOrUpdateNewKey(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{}
+
+	trie, err := trie.InsertOrUpdate(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{1, []byte{0}}
+	trie, err = trie.InsertOrUpdate(newKey, false)
+	assert.Equal(t, 2, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.False(t, trie.Match(newKey).Data.(bool))
+}
+
+func TestInsertOrUpdateNarrowerKey(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{1, []byte{0}}
+
+	trie, err := trie.InsertOrUpdate(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{}
+	trie, err = trie.InsertOrUpdate(newKey, false)
+	assert.Equal(t, 2, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.False(t, trie.Match(newKey).Data.(bool))
+}
+
+func TestInsertOrUpdateDisjointKeys(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{1, []byte{0}}
+
+	trie, err := trie.InsertOrUpdate(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{1, []byte{0x80}}
+	trie, err = trie.InsertOrUpdate(newKey, false)
+	assert.Equal(t, 2, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.False(t, trie.Match(newKey).Data.(bool))
+}
+
+func TestInsertOrUpdateInactive(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{1, []byte{0}}
+
+	trie, err := trie.InsertOrUpdate(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{1, []byte{0x80}}
+	trie, err = trie.InsertOrUpdate(newKey, false)
+	assert.Equal(t, 2, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.False(t, trie.Match(newKey).Data.(bool))
+
+	inactiveKey := &TrieKey{}
+	trie, err = trie.InsertOrUpdate(inactiveKey, "value")
+	assert.Equal(t, 3, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.False(t, trie.Match(newKey).Data.(bool))
+	assert.Equal(t, "value", trie.Match(inactiveKey).Data.(string))
+}
+
 func TestMatchNilTrie(t *testing.T) {
 	var trie *TrieNode
 
