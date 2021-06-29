@@ -81,6 +81,218 @@ func TestInsertNilKey(t *testing.T) {
 	assert.Equal(t, 0, trie.height())
 }
 
+func TestInsertOrUpdateNilKey(t *testing.T) {
+	var trie *TrieNode
+
+	newTrie, err := trie.InsertOrUpdate(nil, nil)
+	assert.NotNil(t, err)
+	assert.Equal(t, trie, newTrie)
+	assert.Equal(t, 0, trie.Size())
+	assert.Equal(t, 0, trie.height())
+}
+
+func TestInsertOrUpdateChangeValue(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{}
+
+	trie, err := trie.InsertOrUpdate(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	trie, err = trie.InsertOrUpdate(key, false)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.False(t, trie.Match(key).Data.(bool))
+}
+
+func TestInsertOrUpdateNewKey(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{}
+
+	trie, err := trie.InsertOrUpdate(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{1, []byte{0}}
+	trie, err = trie.InsertOrUpdate(newKey, false)
+	assert.Equal(t, 2, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.False(t, trie.Match(newKey).Data.(bool))
+}
+
+func TestInsertOrUpdateNarrowerKey(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{1, []byte{0}}
+
+	trie, err := trie.InsertOrUpdate(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{}
+	trie, err = trie.InsertOrUpdate(newKey, false)
+	assert.Equal(t, 2, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.False(t, trie.Match(newKey).Data.(bool))
+}
+
+func TestInsertOrUpdateDisjointKeys(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{1, []byte{0}}
+
+	trie, err := trie.InsertOrUpdate(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{1, []byte{0x80}}
+	trie, err = trie.InsertOrUpdate(newKey, false)
+	assert.Equal(t, 2, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.False(t, trie.Match(newKey).Data.(bool))
+}
+
+func TestInsertOrUpdateInactive(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{1, []byte{0}}
+
+	trie, err := trie.InsertOrUpdate(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{1, []byte{0x80}}
+	trie, err = trie.InsertOrUpdate(newKey, false)
+	assert.Equal(t, 2, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.False(t, trie.Match(newKey).Data.(bool))
+
+	inactiveKey := &TrieKey{}
+	trie, err = trie.InsertOrUpdate(inactiveKey, "value")
+	assert.Equal(t, 3, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.False(t, trie.Match(newKey).Data.(bool))
+	assert.Equal(t, "value", trie.Match(inactiveKey).Data.(string))
+}
+
+func TestUpdateNilKey(t *testing.T) {
+	var trie *TrieNode
+
+	newTrie, err := trie.Update(nil, nil)
+	assert.NotNil(t, err)
+	assert.Equal(t, trie, newTrie)
+	assert.Equal(t, 0, trie.Size())
+	assert.Equal(t, 0, trie.height())
+}
+
+func TestUpdateChangeValue(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{}
+
+	trie, err := trie.Insert(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	trie, err = trie.Update(key, false)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.False(t, trie.Match(key).Data.(bool))
+}
+
+func TestUpdateNewKey(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{}
+
+	trie, err := trie.Insert(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{1, []byte{0}}
+	trie, err = trie.Update(newKey, false)
+	assert.Equal(t, 1, trie.Size())
+	assert.NotNil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.True(t, trie.Match(newKey).Data.(bool))
+}
+
+func TestUpdateNarrowerKey(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{1, []byte{0}}
+
+	trie, err := trie.Insert(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{}
+	trie, err = trie.Update(newKey, false)
+	assert.Equal(t, 1, trie.Size())
+	assert.NotNil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.Nil(t, trie.Match(newKey))
+}
+
+func TestUpdateDisjointKeys(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{1, []byte{0}}
+
+	trie, err := trie.Insert(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{1, []byte{0x80}}
+	trie, err = trie.Update(newKey, false)
+	assert.Equal(t, 1, trie.Size())
+	assert.NotNil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.Nil(t, trie.Match(newKey))
+}
+
+func TestUpdateInactive(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{1, []byte{0}}
+
+	trie, err := trie.Insert(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{1, []byte{0x80}}
+	trie, err = trie.Insert(newKey, false)
+	assert.Equal(t, 2, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.False(t, trie.Match(newKey).Data.(bool))
+
+	inactiveKey := &TrieKey{}
+	trie, err = trie.Update(inactiveKey, "value")
+	assert.Equal(t, 2, trie.Size())
+	assert.NotNil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.False(t, trie.Match(newKey).Data.(bool))
+	assert.Nil(t, trie.Match(inactiveKey))
+}
+
 func TestMatchNilTrie(t *testing.T) {
 	var trie *TrieNode
 
@@ -104,6 +316,115 @@ func TestMatchZeroLength(t *testing.T) {
 		0,
 		[]byte{10, 0, 0, 0},
 	}))
+}
+
+func TestGetOrInsertNilKey(t *testing.T) {
+	var trie *TrieNode
+
+	_, _, err := trie.GetOrInsert(nil, true)
+	assert.NotNil(t, err)
+}
+
+func TestGetOrInsertTrivial(t *testing.T) {
+	var trie *TrieNode
+	assert.Equal(t, 0, trie.Size())
+
+	key := &TrieKey{0, []byte{}}
+
+	trie, node, err := trie.GetOrInsert(key, true)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, trie.Size())
+	assert.Equal(t, trie, node)
+	assert.True(t, node.Data.(bool))
+}
+
+func TestGetOrInsertExists(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{0, []byte{}}
+
+	trie, err := trie.Insert(key, true)
+	assert.Equal(t, 1, trie.Size())
+
+	trie, node, err := trie.GetOrInsert(key, false)
+
+	assert.Nil(t, err)
+	assert.Equal(t, 1, trie.Size())
+	assert.Equal(t, trie, node)
+	assert.True(t, node.Data.(bool))
+}
+
+func TestGetOrInsertBroader(t *testing.T) {
+	var trie *TrieNode
+
+	existingKey := &TrieKey{16, []byte{10, 224}}
+	trie, err := trie.Insert(existingKey, true)
+	assert.Equal(t, 1, trie.Size())
+
+	broaderKey := &TrieKey{8, []byte{10}}
+	trie, node, err := trie.GetOrInsert(broaderKey, false)
+
+	assert.Nil(t, err)
+	assert.Equal(t, 2, trie.Size())
+	assert.Equal(t, trie, node)
+	assert.False(t, node.Data.(bool))
+
+	assert.True(t, trie.Match(existingKey).Data.(bool))
+	assert.False(t, trie.Match(broaderKey).Data.(bool))
+}
+
+func TestGetOrInsertNarrower(t *testing.T) {
+	var trie *TrieNode
+
+	existingKey := &TrieKey{16, []byte{10, 224}}
+	trie, err := trie.Insert(existingKey, true)
+	assert.Equal(t, 1, trie.Size())
+
+	narrowerKey := &TrieKey{24, []byte{10, 224, 24}}
+	trie, node, err := trie.GetOrInsert(narrowerKey, false)
+
+	fmt.Printf("%+v\n", trie)
+	fmt.Printf("%+v\n", node)
+
+	assert.Nil(t, err)
+	assert.Equal(t, 2, trie.Size())
+	assert.NotEqual(t, trie, node)
+	assert.False(t, node.Data.(bool))
+
+	assert.True(t, trie.Match(existingKey).Data.(bool))
+	assert.False(t, trie.Match(narrowerKey).Data.(bool))
+}
+
+func TestGetOrInsertDisjoint(t *testing.T) {
+	var trie *TrieNode
+
+	existingKey := &TrieKey{16, []byte{10, 224}}
+	trie, err := trie.Insert(existingKey, true)
+	assert.Equal(t, 1, trie.Size())
+
+	disjointKey := &TrieKey{16, []byte{10, 225}}
+	trie, node, err := trie.GetOrInsert(disjointKey, false)
+
+	assert.Nil(t, err)
+	assert.Equal(t, 2, trie.Size())
+	assert.False(t, node.Data.(bool))
+
+	assert.True(t, trie.Match(existingKey).Data.(bool))
+	assert.False(t, trie.Match(disjointKey).Data.(bool))
+}
+
+func TestGetOrInsertInActive(t *testing.T) {
+	var trie *TrieNode
+
+	trie, _ = trie.Insert(&TrieKey{16, []byte{10, 224}}, true)
+	trie, _ = trie.Insert(&TrieKey{16, []byte{10, 225}}, true)
+	assert.Equal(t, 2, trie.Size())
+
+	trie, node, err := trie.GetOrInsert(&TrieKey{15, []byte{10, 224}}, false)
+	assert.Nil(t, err)
+	assert.Equal(t, 3, trie.Size())
+	assert.Equal(t, trie, node)
+	assert.False(t, node.Data.(bool))
 }
 
 func TestNoMatchTooBroad(t *testing.T) {
@@ -902,6 +1223,7 @@ func TestDeleteRecursiveNil(t *testing.T) {
 	assert.NotNil(t, trie.Match(&key))
 	match := trie.Match(&childKey)
 	assert.NotEqual(t, childKey, match.TrieKey)
+	// assert.Nil(t, trie.Get(&childKey))
 }
 
 func TestDeleteRecursiveLeftChild(t *testing.T) {
@@ -926,6 +1248,7 @@ func TestDeleteRecursiveLeftChild(t *testing.T) {
 	assert.NotNil(t, trie.Match(&key))
 	match := trie.Match(childKey)
 	assert.NotEqual(t, *childKey, match.TrieKey)
+	// assert.Nil(t, trie.Get(childKey))
 }
 
 func TestDeleteKeyTooBroad(t *testing.T) {
@@ -991,7 +1314,7 @@ func TestSuccessivelyBetter(t *testing.T) {
 
 	// Add successively more specific keys to the trie and assert that exact
 	// matches are returned when appropriate and non-exact, but longest matches
-	// are returneda for the rest.
+	// are returned for the rest.
 	for index, key := range keys {
 		var err error
 		trie, err = trie.Insert(&key, nil)
@@ -1068,26 +1391,41 @@ func TestIterate(t *testing.T) {
 	}
 
 	var trie *TrieNode
-	for _, key := range keys {
-		trie, _ = trie.Insert(&key, nil)
+	check := func(t *testing.T) {
+		result := []TrieKey{}
+		trie.Iterate(func(key *TrieKey, _ interface{}) bool {
+			result = append(result, *key)
+			return true
+		})
+		assert.Equal(t, golden, result)
+
+		iterations := 0
+		trie.Iterate(func(key *TrieKey, _ interface{}) bool {
+			iterations++
+			return false
+		})
+		assert.Equal(t, 1, iterations)
+
+		// Just ensure that iterating with a nil callback doesn't crash
+		trie.Iterate(nil)
 	}
 
-	result := []TrieKey{}
-	trie.Iterate(func(key *TrieKey, _ interface{}) bool {
-		result = append(result, *key)
-		return true
+	t.Run("normal insert", func(t *testing.T) {
+		trie = nil
+		for _, key := range keys {
+			trie, _ = trie.Insert(&key, nil)
+		}
+		check(t)
 	})
-	assert.Equal(t, golden, result)
-
-	iterations := 0
-	trie.Iterate(func(key *TrieKey, _ interface{}) bool {
-		iterations++
-		return false
+	t.Run("get or insert", func(t *testing.T) {
+		trie = nil
+		for _, key := range keys {
+			var err error
+			trie, _, err = trie.GetOrInsert(&key, nil)
+			assert.Nil(t, err)
+		}
+		check(t)
 	})
-	assert.Equal(t, 1, iterations)
-
-	// Just ensure that iterating with a nil callback doesn't crash
-	trie.Iterate(nil)
 }
 
 type pair struct {
@@ -1180,30 +1518,43 @@ func TestAggregate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			var trie *TrieNode
-			for _, p := range tt.pairs {
-				trie, _ = trie.Insert(&p.key, p.data)
+			check := func(t *testing.T) {
+				expectedIterations := 0
+				result := []pair{}
+				trie.Aggregate(
+					func(key *TrieKey, data interface{}) bool {
+						result = append(result, pair{key: *key, data: data})
+						expectedIterations = 1
+						return true
+					},
+				)
+				assert.Equal(t, tt.golden, result)
+
+				iterations := 0
+				trie.Aggregate(
+					func(key *TrieKey, data interface{}) bool {
+						result = append(result, pair{key: *key, data: data})
+						iterations++
+						return false
+					},
+				)
+				assert.Equal(t, expectedIterations, iterations)
 			}
 
-			expectedIterations := 0
-			result := []pair{}
-			trie.Aggregate(
-				func(key *TrieKey, data interface{}) bool {
-					result = append(result, pair{key: *key, data: data})
-					expectedIterations = 1
-					return true
-				},
-			)
-			assert.Equal(t, tt.golden, result)
-
-			iterations := 0
-			trie.Aggregate(
-				func(key *TrieKey, data interface{}) bool {
-					result = append(result, pair{key: *key, data: data})
-					iterations++
-					return false
-				},
-			)
-			assert.Equal(t, expectedIterations, iterations)
+			t.Run("normal insert", func(t *testing.T) {
+				for _, p := range tt.pairs {
+					trie, _ = trie.Insert(&p.key, p.data)
+				}
+				check(t)
+			})
+			t.Run("get or insert", func(t *testing.T) {
+				for _, p := range tt.pairs {
+					var err error
+					trie, _, err = trie.GetOrInsert(&p.key, p.data)
+					assert.Nil(t, err)
+				}
+				check(t)
+			})
 		})
 	}
 }

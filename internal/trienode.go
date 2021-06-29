@@ -190,8 +190,67 @@ func compare(a, b *TrieKey, prematchedBits uint) (a_match, b_match, reversed boo
 	return
 }
 
+// Get is the public form of get(...)
+func (me *TrieNode) GetOrInsert(searchKey *TrieKey, data interface{}) (newHead, result *TrieNode, err error) {
+	if searchKey == nil {
+		return nil, nil, fmt.Errorf("cannot insert nil key")
+	}
+
+	newHead, result = me.getOrInsert(searchKey, data, 0)
+	return
+}
+
+func (me *TrieNode) setSize() {
+	// me is not nil by design
+	me.size = uint32(me.children[0].Size() + me.children[1].Size())
+	me.h = 1 + uint16(uint16(intMax(me.children[0].height(), me.children[1].height())))
+	if me.isActive {
+		me.size++
+	}
+}
+
+// getOrInsert returns the existing value if an exact match is found, otherwise, inserts the given default
+func (me *TrieNode) getOrInsert(searchKey *TrieKey, data interface{}, prematchedBits uint) (head, result *TrieNode) {
+	defer func() {
+		if result == nil {
+			result = &TrieNode{TrieKey: *searchKey, Data: data}
+
+			// The only error from insert is that the key already exists. But, that cannot happen by design.
+			head, _ = me.insert(result, true, false, prematchedBits)
+		}
+	}()
+
+	if me == nil || searchKey.Length < me.TrieKey.Length {
+		return
+	}
+
+	matches, exact, _, child := contains(&me.TrieKey, searchKey, prematchedBits)
+	if !matches {
+		return
+	}
+
+	if !exact {
+		head = me
+		var newChild *TrieNode
+		newChild, result = me.children[child].getOrInsert(searchKey, data, me.TrieKey.Length)
+		me.children[child] = newChild
+		me.setSize()
+		return
+	}
+
+	if !me.isActive {
+		return
+	}
+
+	return me, me
+}
+
 // Match is the public form of match(...)
 func (me *TrieNode) Match(searchKey *TrieKey) *TrieNode {
+	if searchKey == nil {
+		return nil
+	}
+
 	return me.match(searchKey, 0)
 }
 
@@ -209,7 +268,7 @@ func (me *TrieNode) Match(searchKey *TrieKey) *TrieNode {
 // "longest" means that if multiple existing entries in the trie match the one
 // with the longest length will be returned. It is the most specific match.
 func (me *TrieNode) match(searchKey *TrieKey, prematchedBits uint) *TrieNode {
-	if me == nil || searchKey == nil {
+	if me == nil {
 		return nil
 	}
 
@@ -259,32 +318,48 @@ func intMax(a, b int) int {
 	return a
 }
 
+// Update updates the key / value only if the key already exists
+func (me *TrieNode) Update(key *TrieKey, data interface{}) (newHead *TrieNode, err error) {
+	if key == nil {
+		return nil, fmt.Errorf("cannot insert nil key")
+	}
+	return me.insert(&TrieNode{TrieKey: *key, Data: data}, false, true, 0)
+}
+
+// InsertOrUpdate inserts the key / value if the key didn't previously exist.
+// Otherwise, it updates the data.
+func (me *TrieNode) InsertOrUpdate(key *TrieKey, data interface{}) (newHead *TrieNode, err error) {
+	if key == nil {
+		return nil, fmt.Errorf("cannot insert nil key")
+	}
+	return me.insert(&TrieNode{TrieKey: *key, Data: data}, true, true, 0)
+}
+
 // Insert is the public form of insert(...)
 func (me *TrieNode) Insert(key *TrieKey, data interface{}) (newHead *TrieNode, err error) {
 	if key == nil {
 		return nil, fmt.Errorf("cannot insert nil key")
 	}
-	return me.insert(&TrieNode{TrieKey: *key, Data: data}, 0)
+	return me.insert(&TrieNode{TrieKey: *key, Data: data}, true, false, 0)
 }
 
 // insert adds a node into the trie and return the new root of the trie. It is
 // important to note that the root of the trie can change. If the new node
 // cannot be inserted, nil is returned.
-func (me *TrieNode) insert(node *TrieNode, prematchedBits uint) (newHead *TrieNode, err error) {
+func (me *TrieNode) insert(node *TrieNode, insert, update bool, prematchedBits uint) (newHead *TrieNode, err error) {
 	defer func() {
 		if err == nil && newHead != nil {
 			node.size = 1
 			node.h = 1
 			node.isActive = true
-			newHead.size = uint32(newHead.children[0].Size() + newHead.children[1].Size())
-			newHead.h = 1 + uint16(uint16(intMax(newHead.children[0].height(), newHead.children[1].height())))
-			if newHead.isActive {
-				newHead.size++
-			}
+			newHead.setSize()
 		}
 	}()
 
 	if me == nil {
+		if !insert {
+			return me, fmt.Errorf("the key doesn't exist to update")
+		}
 		return node, nil
 	}
 
@@ -293,26 +368,35 @@ func (me *TrieNode) insert(node *TrieNode, prematchedBits uint) (newHead *TrieNo
 	switch {
 	case trie_contains && node_contains:
 		// They have the same key
-		if me.isActive {
+		if me.isActive && !update {
 			return me, fmt.Errorf("a node with that key already exists")
+		}
+		if !me.isActive && !insert {
+			return me, fmt.Errorf("the key doesn't exist to update")
 		}
 		node.children = me.children
 		return node, nil
 
 	case trie_contains && !node_contains:
 		// Trie node's key contains the new node's key. Insert it.
-		newChild, err := me.children[child].insert(node, me.Length)
+		newChild, err := me.children[child].insert(node, insert, update, me.Length)
 		if err == nil {
 			me.children[child] = newChild
 		}
 		return me, err
 
 	case !trie_contains && node_contains:
+		if !insert {
+			return me, fmt.Errorf("the key doesn't exist to update")
+		}
 		// New node's key contains the trie node's key. Insert new node as the parent of the trie.
 		node.children[child] = me
 		return node, nil
 
 	default:
+		if !insert {
+			return me, fmt.Errorf("the key doesn't exist to update")
+		}
 		// Keys are disjoint. Create a new (inactive) parent node to join them side-by-side.
 		var children [2]*TrieNode
 
@@ -470,7 +554,6 @@ func (me *TrieNode) aggregable(data dataContainer) (bool, dataContainer) {
 	leftAggegable, leftData := left.aggregable(data)
 	rightAggegable, rightData := right.aggregable(data)
 
-	// TODO The following doesn't check nil on the children (in case you get rid of the above)
 	arePeers := (me.Length+1) == left.Length && left.Length == right.Length
 	if arePeers && leftAggegable && rightAggegable && dataEqual(leftData, rightData) {
 		return true, leftData
