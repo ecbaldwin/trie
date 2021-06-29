@@ -216,7 +216,7 @@ func (me *TrieNode) getOrInsert(searchKey *TrieKey, data interface{}, prematched
 			result = &TrieNode{TrieKey: *searchKey, Data: data}
 
 			// The only error from insert is that the key already exists. But, that cannot happen by design.
-			head, _ = me.insert(result, false, prematchedBits)
+			head, _ = me.insert(result, true, false, prematchedBits)
 		}
 	}()
 
@@ -318,13 +318,21 @@ func intMax(a, b int) int {
 	return a
 }
 
+// Update updates the key / value only if the key already exists
+func (me *TrieNode) Update(key *TrieKey, data interface{}) (newHead *TrieNode, err error) {
+	if key == nil {
+		return nil, fmt.Errorf("cannot insert nil key")
+	}
+	return me.insert(&TrieNode{TrieKey: *key, Data: data}, false, true, 0)
+}
+
 // InsertOrUpdate inserts the key / value if the key didn't previously exist.
 // Otherwise, it updates the data.
 func (me *TrieNode) InsertOrUpdate(key *TrieKey, data interface{}) (newHead *TrieNode, err error) {
 	if key == nil {
 		return nil, fmt.Errorf("cannot insert nil key")
 	}
-	return me.insert(&TrieNode{TrieKey: *key, Data: data}, true, 0)
+	return me.insert(&TrieNode{TrieKey: *key, Data: data}, true, true, 0)
 }
 
 // Insert is the public form of insert(...)
@@ -332,13 +340,13 @@ func (me *TrieNode) Insert(key *TrieKey, data interface{}) (newHead *TrieNode, e
 	if key == nil {
 		return nil, fmt.Errorf("cannot insert nil key")
 	}
-	return me.insert(&TrieNode{TrieKey: *key, Data: data}, false, 0)
+	return me.insert(&TrieNode{TrieKey: *key, Data: data}, true, false, 0)
 }
 
 // insert adds a node into the trie and return the new root of the trie. It is
 // important to note that the root of the trie can change. If the new node
 // cannot be inserted, nil is returned.
-func (me *TrieNode) insert(node *TrieNode, update bool, prematchedBits uint) (newHead *TrieNode, err error) {
+func (me *TrieNode) insert(node *TrieNode, insert, update bool, prematchedBits uint) (newHead *TrieNode, err error) {
 	defer func() {
 		if err == nil && newHead != nil {
 			node.size = 1
@@ -349,6 +357,9 @@ func (me *TrieNode) insert(node *TrieNode, update bool, prematchedBits uint) (ne
 	}()
 
 	if me == nil {
+		if !insert {
+			return me, fmt.Errorf("the key doesn't exist to update")
+		}
 		return node, nil
 	}
 
@@ -360,23 +371,32 @@ func (me *TrieNode) insert(node *TrieNode, update bool, prematchedBits uint) (ne
 		if me.isActive && !update {
 			return me, fmt.Errorf("a node with that key already exists")
 		}
+		if !me.isActive && !insert {
+			return me, fmt.Errorf("the key doesn't exist to update")
+		}
 		node.children = me.children
 		return node, nil
 
 	case trie_contains && !node_contains:
 		// Trie node's key contains the new node's key. Insert it.
-		newChild, err := me.children[child].insert(node, update, me.Length)
+		newChild, err := me.children[child].insert(node, insert, update, me.Length)
 		if err == nil {
 			me.children[child] = newChild
 		}
 		return me, err
 
 	case !trie_contains && node_contains:
+		if !insert {
+			return me, fmt.Errorf("the key doesn't exist to update")
+		}
 		// New node's key contains the trie node's key. Insert new node as the parent of the trie.
 		node.children[child] = me
 		return node, nil
 
 	default:
+		if !insert {
+			return me, fmt.Errorf("the key doesn't exist to update")
+		}
 		// Keys are disjoint. Create a new (inactive) parent node to join them side-by-side.
 		var children [2]*TrieNode
 

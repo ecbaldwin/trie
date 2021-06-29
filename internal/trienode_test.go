@@ -187,6 +187,112 @@ func TestInsertOrUpdateInactive(t *testing.T) {
 	assert.Equal(t, "value", trie.Match(inactiveKey).Data.(string))
 }
 
+func TestUpdateNilKey(t *testing.T) {
+	var trie *TrieNode
+
+	newTrie, err := trie.Update(nil, nil)
+	assert.NotNil(t, err)
+	assert.Equal(t, trie, newTrie)
+	assert.Equal(t, 0, trie.Size())
+	assert.Equal(t, 0, trie.height())
+}
+
+func TestUpdateChangeValue(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{}
+
+	trie, err := trie.Insert(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	trie, err = trie.Update(key, false)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.False(t, trie.Match(key).Data.(bool))
+}
+
+func TestUpdateNewKey(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{}
+
+	trie, err := trie.Insert(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{1, []byte{0}}
+	trie, err = trie.Update(newKey, false)
+	assert.Equal(t, 1, trie.Size())
+	assert.NotNil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.True(t, trie.Match(newKey).Data.(bool))
+}
+
+func TestUpdateNarrowerKey(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{1, []byte{0}}
+
+	trie, err := trie.Insert(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{}
+	trie, err = trie.Update(newKey, false)
+	assert.Equal(t, 1, trie.Size())
+	assert.NotNil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.Nil(t, trie.Match(newKey))
+}
+
+func TestUpdateDisjointKeys(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{1, []byte{0}}
+
+	trie, err := trie.Insert(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{1, []byte{0x80}}
+	trie, err = trie.Update(newKey, false)
+	assert.Equal(t, 1, trie.Size())
+	assert.NotNil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.Nil(t, trie.Match(newKey))
+}
+
+func TestUpdateInactive(t *testing.T) {
+	var trie *TrieNode
+
+	key := &TrieKey{1, []byte{0}}
+
+	trie, err := trie.Insert(key, true)
+	assert.Equal(t, 1, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+
+	newKey := &TrieKey{1, []byte{0x80}}
+	trie, err = trie.Insert(newKey, false)
+	assert.Equal(t, 2, trie.Size())
+	assert.Nil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.False(t, trie.Match(newKey).Data.(bool))
+
+	inactiveKey := &TrieKey{}
+	trie, err = trie.Update(inactiveKey, "value")
+	assert.Equal(t, 2, trie.Size())
+	assert.NotNil(t, err)
+	assert.True(t, trie.Match(key).Data.(bool))
+	assert.False(t, trie.Match(newKey).Data.(bool))
+	assert.Nil(t, trie.Match(inactiveKey))
+}
+
 func TestMatchNilTrie(t *testing.T) {
 	var trie *TrieNode
 
@@ -1221,10 +1327,8 @@ func TestSuccessivelyBetter(t *testing.T) {
 			assert.NotNil(t, node)
 			if i <= index {
 				assert.Equal(t, searchKey, node.TrieKey)
-				// assert.NotNil(t, trie.Get(&searchKey))
 			} else {
 				assert.Equal(t, keys[index], node.TrieKey)
-				// assert.Nil(t, trie.Get(&searchKey))
 			}
 		}
 	}
@@ -1242,10 +1346,8 @@ func TestSuccessivelyBetter(t *testing.T) {
 			node := trie.Match(&searchKey)
 			if i <= index {
 				assert.Nil(t, node)
-				// assert.Nil(t, trie.Get(&searchKey))
 			} else {
 				assert.Equal(t, node.TrieKey, searchKey)
-				// assert.NotNil(t, trie.Get(&searchKey))
 			}
 		}
 	}
