@@ -436,11 +436,7 @@ func (me *TrieNode) Delete(key *TrieKey) (newHead *TrieNode, err error) {
 func (me *TrieNode) del(key *TrieKey, prematchedBits uint) (newHead *TrieNode, err error) {
 	defer func() {
 		if err == nil && newHead != nil {
-			newHead.size = uint32(newHead.children[0].Size() + newHead.children[1].Size())
-			newHead.h = 1 + uint16(uint16(intMax(newHead.children[0].height(), newHead.children[1].height())))
-			if newHead.isActive {
-				newHead.size++
-			}
+			newHead.setSize()
 		}
 	}()
 
