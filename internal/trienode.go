@@ -2,7 +2,7 @@ package internal
 
 import (
 	"fmt"
-	"math"
+	"math/bits"
 )
 
 type TrieKey struct {
@@ -29,28 +29,6 @@ type TrieNode struct {
 // least-significant partial) to hold the given number of bits.
 func bitsToBytes(bits uint) uint {
 	return (bits + 7) / 8
-}
-
-// numCommonBits calculates the number of consecutive common most-significant
-// bits between two bytes: a and b. The following table shows how the equation
-// was derived.
-//
-// This function assumes that a != b. It will get the wrong answer otherwise! A
-// more general form of this function should check if a == b and return 8.
-//
-// |  x = a^b | log2(x) | floor | 7 - floor | result
-// |----------|---------|-------|-----------|-------
-// [  0,   1) | [-∞, 0) | NA    | NA        | not possible since a != b
-// [  1,   2) | [ 0, 1) | 0     | 7         | 7 bits in common
-// [  2,   4) | [ 1, 2) | 1     | 6         | 6 bits in common
-// [  4,   8) | [ 2, 3) | 2     | 5         | 5 bits in common
-// [  8,  16) | [ 3, 4) | 3     | 4         | 4 bits in common
-// [ 16,  32) | [ 4, 5) | 4     | 3         | 3 bits in common
-// [ 32,  64) | [ 5, 6) | 5     | 2         | 2 bits in common
-// [ 64, 128) | [ 6, 7) | 6     | 1         | 1 bits in common
-// [128, 256) | [ 7, 8) | 7     | 0         | 0 bits in common
-func numCommonBits(a, b byte) uint {
-	return 7 - uint(math.Log2(float64(a^b)))
 }
 
 // contains is a helper which compares to see if the shorter prefix contains the
@@ -97,7 +75,7 @@ func contains(shorter, longer *TrieKey, prematchedBits uint) (matches, exact boo
 					continue
 				}
 
-				common = 8*i + numCommonBits(s, l)
+				common = 8*i + uint(bits.LeadingZeros8(s^l))
 
 				// Whether `longer` goes on the left (0) or right (1)
 				if longer.Bits[i] < shorter.Bits[i] {

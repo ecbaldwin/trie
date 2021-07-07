@@ -2,7 +2,6 @@ package internal
 
 import (
 	"fmt"
-	"math/rand"
 	"reflect"
 	"testing"
 	"unsafe"
@@ -1053,44 +1052,6 @@ func TestBitsToBytes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%d", tt.bits), func(t *testing.T) {
 			assert.Equal(t, tt.bytes, bitsToBytes(tt.bits))
-		})
-	}
-}
-
-func TestNumCommonBits(t *testing.T) {
-	rand.Seed(1)
-
-	for i := 0; i < 1000; i++ {
-		a := byte(rand.Intn(256))
-		b := byte(rand.Intn(256))
-		if a == b {
-			continue
-		}
-		t.Run(fmt.Sprintf("%d^%d", a, b), func(t *testing.T) {
-			var common uint
-
-			// A naive (but slower?) implementation of numCommonBits
-			switch {
-			case a^b < 1:
-				common = 8
-			case a^b < 2:
-				common = 7
-			case a^b < 4:
-				common = 6
-			case a^b < 8:
-				common = 5
-			case a^b < 16:
-				common = 4
-			case a^b < 32:
-				common = 3
-			case a^b < 64:
-				common = 2
-			case a^b < 128:
-				common = 1
-			default:
-				common = 0
-			}
-			assert.Equal(t, common, numCommonBits(a, b))
 		})
 	}
 }

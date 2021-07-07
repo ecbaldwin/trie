@@ -2,7 +2,6 @@ package internal
 
 import (
 	"fmt"
-	"math/rand"
 	"net"
 	"testing"
 	"unsafe"
@@ -1052,92 +1051,6 @@ func TestBitsToBytes32(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%d", tt.bits), func(t *testing.T) {
 			assert.Equal(t, tt.bytes, bitsToBytes(tt.bits))
-		})
-	}
-}
-
-func TestNumCommonBits32(t *testing.T) {
-	rand.Seed(1)
-
-	for i := 0; i < 1000; i++ {
-		a := uint32(rand.Intn(0x7fffffff))
-		b := uint32(rand.Intn(0x7fffffff))
-		if a == b {
-			continue
-		}
-		t.Run(fmt.Sprintf("%d^%d", a, b), func(t *testing.T) {
-			var common uint
-
-			// A naive (but slower?) implementation of numCommonBits
-			switch {
-			case a^b < 0x00000001:
-				common = 32
-			case a^b < 0x00000002:
-				common = 31
-			case a^b < 0x00000004:
-				common = 30
-			case a^b < 0x00000008:
-				common = 29
-			case a^b < 0x00000010:
-				common = 28
-			case a^b < 0x00000020:
-				common = 27
-			case a^b < 0x00000040:
-				common = 26
-			case a^b < 0x00000080:
-				common = 25
-			case a^b < 0x00000100:
-				common = 24
-			case a^b < 0x00000200:
-				common = 23
-			case a^b < 0x00000400:
-				common = 22
-			case a^b < 0x00000800:
-				common = 21
-			case a^b < 0x00001000:
-				common = 20
-			case a^b < 0x00002000:
-				common = 19
-			case a^b < 0x00004000:
-				common = 18
-			case a^b < 0x00008000:
-				common = 17
-			case a^b < 0x00010000:
-				common = 16
-			case a^b < 0x00020000:
-				common = 15
-			case a^b < 0x00040000:
-				common = 14
-			case a^b < 0x00080000:
-				common = 13
-			case a^b < 0x00100000:
-				common = 12
-			case a^b < 0x00200000:
-				common = 11
-			case a^b < 0x00400000:
-				common = 10
-			case a^b < 0x00800000:
-				common = 9
-			case a^b < 0x01000000:
-				common = 8
-			case a^b < 0x02000000:
-				common = 7
-			case a^b < 0x04000000:
-				common = 6
-			case a^b < 0x08000000:
-				common = 5
-			case a^b < 0x10000000:
-				common = 4
-			case a^b < 0x20000000:
-				common = 3
-			case a^b < 0x40000000:
-				common = 2
-			case a^b < 0x80000000:
-				common = 1
-			default:
-				common = 0
-			}
-			assert.Equal(t, common, numCommonBits32(a, b))
 		})
 	}
 }

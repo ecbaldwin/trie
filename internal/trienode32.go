@@ -2,7 +2,7 @@ package internal
 
 import (
 	"fmt"
-	"math"
+	"math/bits"
 )
 
 type TrieKey32 struct {
@@ -17,15 +17,6 @@ type TrieNode32 struct {
 	h        uint16
 	isActive bool
 	children [2]*TrieNode32
-}
-
-// numCommonBits32 calculates the number of consecutive common most-significant
-// bits between two uint32s: a and b.
-//
-// This function assumes that a != b. It will get the wrong answer otherwise! A
-// more general form of this function should check if a == b and return 32.
-func numCommonBits32(a, b uint32) uint {
-	return 31 - uint(math.Log2(float64(a^b)))
 }
 
 // contains32 is a helper which compares to see if the shorter prefix contains the
@@ -57,7 +48,7 @@ func contains32(shorter, longer *TrieKey32) (matches, exact bool, common, child 
 		if !matches {
 			s, l := shorter.Bits, longer.Bits
 
-			common = numCommonBits32(s, l)
+			common = uint(bits.LeadingZeros32(s ^ l))
 
 			// Whether `longer` goes on the left (0) or right (1)
 			if longer.Bits < shorter.Bits {
